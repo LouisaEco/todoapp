@@ -1,4 +1,3 @@
-// FilterBar.jsx - filtering and search controls
 export default function FilterBar({
   statusFilter,
   setStatusFilter,

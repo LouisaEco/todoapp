@@ -1,63 +1,89 @@
-// TaskItem.jsx - simple beginner-style edit, delete, complete features
 import { useState } from "react";
 
-export default function TaskItem({ task, setTasks }) {
+export default function TaskItem({ task, setTasks, handleDelete }) {
   const [isEditing, setIsEditing] = useState(false);
-
-  // local state used while editing
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [dueDate, setDueDate] = useState(task.dueDate || "");
   const [priority, setPriority] = useState(task.priority || "Low");
 
-  const toggleComplete = () => {
-    setTasks((old) => old.map((t) => (t.id === task.id ? { ...t, completed: !t.completed } : t)));
-  };
-
-  const deleteTask = () => {
-    if (confirm("Delete this task?")) {
-      setTasks((old) => old.filter((t) => t.id !== task.id));
-    }
-  };
-
-  // helper for past date
-  const isPastDate = (dateStr) => {
+  // helper to check if a date is in the past
+  function isPastDate(dateStr) {
     if (!dateStr) return false;
-    const d = new Date(dateStr);
     const today = new Date();
-    d.setHours(0,0,0,0);
-    today.setHours(0,0,0,0);
-    return d < today;
-  };
+    const chosen = new Date(dateStr);
+    today.setHours(0, 0, 0, 0);
+    chosen.setHours(0, 0, 0, 0);
+    return chosen < today;
+  }
 
-  const saveEdit = () => {
+  // toggle complete status and update in database
+  async function toggleComplete() {
+    let updated = { ...task, completed: !task.completed };
+
+    try {
+      await fetch(`http://localhost:5000/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+
+      setTasks((old) =>
+        old.map((t) => (t.id === task.id ? updated : t))
+      );
+    } catch (err) {
+      console.log("Error updating task:", err);
+    }
+  }
+
+  // save edited task (with past date validation)
+  async function saveEdit() {
     if (title.trim() === "") {
-      alert("Title cannot be empty.");
+      alert("Title cannot be empty!");
       return;
     }
+
     if (isPastDate(dueDate)) {
-      alert("Due date cannot be in the past.");
+      alert("You cannot select a past date.");
       return;
     }
 
-    setTasks((old) =>
-      old.map((t) =>
-        t.id === task.id
-          ? { ...t, title: title.trim(), description: description.trim(), dueDate: dueDate || "", priority }
-          : t
-      )
-    );
-    setIsEditing(false);
-  };
+    let updatedTask = {
+      ...task,
+      title: title.trim(),
+      description: description.trim(),
+      dueDate,
+      priority,
+    };
 
-  const cancelEdit = () => {
-    // reset fields and stop editing
-    setTitle(task.title);
-    setDescription(task.description || "");
-    setDueDate(task.dueDate || "");
-    setPriority(task.priority || "Low");
-    setIsEditing(false);
-  };
+    try {
+      await fetch(`http://localhost:5000/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTask),
+      });
+
+      setTasks((old) =>
+        old.map((t) => (t.id === task.id ? updatedTask : t))
+      );
+
+      setIsEditing(false);
+    } catch (err) {
+      console.log("Error saving edit:", err);
+      alert("Failed to update task.");
+    }
+  }
+
+  
+
+  // get today’s date in YYYY-MM-DD format to prevent past date selection
+  function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
   return (
     <div className={`task-item ${task.completed ? "completed" : ""}`}>
@@ -65,32 +91,42 @@ export default function TaskItem({ task, setTasks }) {
         <div className="edit-area">
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+
           <div className="row">
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                        {/* prevents selecting past date */}
+            <input
+              type="date"
+              value={dueDate}
+              min={getTodayDate()}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+              <select value={priority} onChange={(e) => setPriority(e.target.value)}>
               <option>Low</option>
               <option>Medium</option>
               <option>High</option>
             </select>
           </div>
-          <div className="actions">
-            <button onClick={saveEdit} className="primary">Save</button>
-            <button onClick={cancelEdit}>Cancel</button>
-          </div>
+
+          <button onClick={saveEdit}>Save</button>
+          <button onClick={() => setIsEditing(false)}>Cancel</button>
         </div>
       ) : (
         <div className="view-area">
-          <div className="left">
-            <h3>{task.title}</h3>
-            {task.description && <p className="small">{task.description}</p>}
-            <p className="small"><strong>Due:</strong> {task.dueDate || "N/A"}</p>
-            <p className="small"><strong>Priority:</strong> {task.priority}</p>
+          <div>
+            <h3 style={{ textDecoration: task.completed ? "line-through" : "none" }}>
+              {task.title}
+            </h3>
+            <p>{task.description}</p>
+            <p><b>Due:</b> {task.dueDate || "N/A"}</p>
+            <p><b>Priority:</b> {task.priority}</p>
           </div>
 
-          <div className="right">
-            <button onClick={toggleComplete}>{task.completed ? "Undo" : "Complete"}</button>
+          <div className="actions">
+            <button onClick={toggleComplete}>
+              {task.completed ? "Undo" : "Complete"}
+            </button>
             <button onClick={() => setIsEditing(true)}>Edit</button>
-            <button onClick={deleteTask}>Delete</button>
+            <button onClick={() => handleDelete(task.id)}>Delete</button>
           </div>
         </div>
       )}
