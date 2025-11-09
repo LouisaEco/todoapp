@@ -1,26 +1,40 @@
 import TaskItem from "./TaskItem";
+import { getErrorMessage } from "../utils/errors";
 
-export default function TaskList({ tasks, setTasks }) {
-
-  // delete task from backend and frontend
+export default function TaskList({ tasks, setTasks, allTasks, onAlert }) {
   async function handleDelete(id) {
-    let sure = confirm("Are you sure you want to delete this task?");
-    if (!sure) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this task? This action cannot be undone."
+    );
+    if (!confirmed) return;
 
     try {
-      await fetch(`http://localhost:5000/tasks/${id}`, {
+      const res = await fetch(`http://localhost:5000/tasks/${id}`, {
         method: "DELETE",
       });
 
-      setTasks(tasks.filter((t) => t.id !== id));
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete task");
+      }
+
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== id));
+      onAlert("Task deleted successfully!", "success");
     } catch (err) {
-      console.log("Error deleting task:", err);
-      alert("Could not delete task. Try again.");
+      console.error("Error deleting task:", err);
+      const errorMessage = getErrorMessage(err);
+      onAlert(errorMessage, "error");
     }
   }
 
   if (!tasks || tasks.length === 0) {
-    return <p className="empty">No tasks yet</p>;
+    return (
+      <p className="empty">
+        {allTasks?.length === 0
+          ? "No tasks yet. Create one to get started!"
+          : "No tasks match your filters."}
+      </p>
+    );
   }
 
   return (
@@ -31,6 +45,7 @@ export default function TaskList({ tasks, setTasks }) {
           task={task}
           setTasks={setTasks}
           handleDelete={handleDelete}
+          onAlert={onAlert}
         />
       ))}
     </div>
