@@ -1,4 +1,3 @@
-// App.jsx - main application (simple and beginner-friendly)
 import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import TaskForm from "./components/TaskForm";
@@ -48,7 +47,7 @@ function App() {
     return 1; // Low or unknown
   };
 
-  // Compute the displayed tasks after filtering, searching, and sorting
+  // Computing the displayed tasks after filtering, searching, and sorting
   const displayedTasks = tasks
     .filter((t) => {
       // filter by status
