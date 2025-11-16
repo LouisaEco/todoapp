@@ -1,28 +1,43 @@
-// App.jsx - main application (simple and beginner-friendly)
 import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import TaskForm from "./components/TaskForm";
 import FilterBar from "./components/FilterBar";
 import TaskList from "./components/TaskList";
+import Alert from "./components/Alert";
 import "./App.css";
 
 function App() {
   // Main tasks state (array of task objects)
   const [tasks, setTasks] = useState(() => {
-    // Load tasks from localStorage if any
-    const saved = localStorage.getItem("tasks");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("tasks");
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Failed to load tasks from localStorage:', error);
+      return [];
+    }
   });
 
   // Filter and search state (kept here so FilterBar + TaskList can share)
-  const [statusFilter, setStatusFilter] = useState("All"); // All, Completed, Incomplete
-  const [priorityFilter, setPriorityFilter] = useState("All"); // All, Low, Medium, High
-  const [dueBefore, setDueBefore] = useState(""); // date string or empty
-  const [searchTerm, setSearchTerm] = useState(""); // search text
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [dueBefore, setDueBefore] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Alert state for error/success messages
+  const [alert, setAlert] = useState({ message: '', type: 'error' });
 
   // Save tasks to localStorage whenever tasks change
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    try {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    } catch (error) {
+      console.error('Failed to save tasks to localStorage:', error);
+      setAlert({
+        message: 'Warning: Failed to save tasks locally. Your changes may not persist.',
+        type: 'warning',
+      });
+    }
   }, [tasks]);
 
   // Helper: map priority to number for sorting (High first)
@@ -32,7 +47,7 @@ function App() {
     return 1; // Low or unknown
   };
 
-  // Compute the displayed tasks after filtering, searching, and sorting
+  // Computing the displayed tasks after filtering, searching, and sorting
   const displayedTasks = tasks
     .filter((t) => {
       // filter by status
@@ -72,12 +87,23 @@ function App() {
       return ad - bd;
     });
 
+  const handleAlert = (message, type = 'error') => {
+    setAlert({ message, type });
+  };
+
+  const handleDismissAlert = () => {
+    setAlert({ message: '', type: 'error' });
+  };
+
   return (
     <div className="app-container">
+      <Alert
+        message={alert.message}
+        type={alert.type}
+        onDismiss={handleDismissAlert}
+      />
       <Header />
-      {/* TaskForm can add tasks and also update the tasks array */}
-      <TaskForm setTasks={setTasks} />
-      {/* FilterBar controls filters and search */}
+      <TaskForm setTasks={setTasks} onAlert={handleAlert} />
       <FilterBar
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
@@ -88,8 +114,12 @@ function App() {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
       />
-      {/* TaskList receives the filtered & sorted tasks to display */}
-      <TaskList tasks={displayedTasks} setTasks={setTasks} allTasks={tasks} />
+      <TaskList
+        tasks={displayedTasks}
+        setTasks={setTasks}
+        allTasks={tasks}
+        onAlert={handleAlert}
+      />
     </div>
   );
 }
