@@ -34,7 +34,7 @@ app.post("/tasks", async (req, res) => {
   try {
     const { title, description, dueDate, priority } = req.body;
 
-    if (!title.trim()) {
+    if (!title?.trim()) {
       return res.status(400).json({ error: "Title required" });
     }
 
@@ -42,7 +42,7 @@ app.post("/tasks", async (req, res) => {
       data: {
         title,
         description,
-        due_date: dueDate,
+        due_date: dueDate ? new Date(dueDate) : null,
         priority,
       },
     });
@@ -63,11 +63,11 @@ app.put("/tasks/:id", async (req, res) => {
     const task = await prisma.tasks.update({
       where: { id: Number(id) },
       data: {
-        title: title || undefined,
-        description: description || undefined,
-        due_date: dueDate || undefined,
-        priority: priority || undefined,
-        completed: completed ?? undefined,
+        title,
+        description,
+        due_date: dueDate ? new Date(dueDate) : undefined,
+        priority,
+        completed,
       },
     });
 
@@ -105,5 +105,5 @@ app.delete("/tasks/:id", async (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5432;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
