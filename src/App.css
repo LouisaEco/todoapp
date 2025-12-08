@@ -271,7 +271,7 @@ body {
   border-radius: var(--radius);
   font-size: 15px;
   font-family: inherit;
-  color: var(--text-primary);
+  color: var(--text-primary); 
   background: var(--card-bg);
   transition: all var(--transition);
   outline: none;
@@ -716,3 +716,4 @@ button:disabled {
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
 }
+

@@ -4,15 +4,19 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import prisma from "./prismaClient.js";
+import authRoutes from "./routes/auth.js";
 
 const app = express();
 
-// Middleware
+// =========================
+//       MIDDLEWARE
+// =========================
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // REQUIRED for req.body
+app.use("/auth", authRoutes); // Auth routes
 
 // =========================
-//        ROUTES
+//        TASK ROUTES
 // =========================
 
 // Get all tasks
@@ -54,7 +58,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-// Update a task
+// Update task
 app.put("/tasks/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -83,7 +87,7 @@ app.put("/tasks/:id", async (req, res) => {
   }
 });
 
-// Delete a task
+// Delete task
 app.delete("/tasks/:id", async (req, res) => {
   try {
     const { id } = req.params;

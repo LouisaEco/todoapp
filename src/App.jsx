@@ -6,120 +6,376 @@ import TaskList from "./components/TaskList";
 import Alert from "./components/Alert";
 import "./App.css";
 
+/*
+  App.jsx - Single file version with Login, Signup, Verify, and main app screens.
+  FontAwesome icons used for eye / eye-slash (show/hide password).
+  Keep this file simple and clear for a beginner.
+*/
+
+/* -------------------- Login Form -------------------- */
+function LoginForm({ onLogin, switchToSignup, onAlert }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        onLogin();
+        onAlert("Logged in successfully.", "success");
+      } else {
+        onAlert(data.message || "Login failed", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      onAlert("Server error during login", "error");
+    }
+  };
+
+  return (
+    <div className="auth-page d-flex justify-content-center align-items-center vh-100">
+      <div className="card shadow p-4" style={{ width: 420 }}>
+        <h3 className="text-center mb-3 fw-bold">Login</h3>
+
+        <form onSubmit={handleLogin}>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Email</label>
+            <input
+              type="email"
+              className="form-control"
+              placeholder="Enter email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="mb-3 position-relative">
+            <label className="form-label fw-semibold">Password</label>
+            <input
+              type={showPassword ? "text" : "password"}
+              className="form-control"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {/* FontAwesome eye icon */}
+            <button
+              type="button"
+              className="btn btn-sm position-absolute"
+              style={{ right: 10, top: "38px", background: "transparent", border: "none" }}
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              <i className={showPassword ? "fa-solid fa-eye" : "fa-solid fa-eye-slash"}></i>
+            </button>
+          </div>
+
+          <button className="btn btn-primary w-100">Login</button>
+        </form>
+
+        <p className="text-center mt-3">
+          Don't have an account?{" "}
+          <button className="btn btn-link p-0" onClick={switchToSignup}>
+            Sign Up
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Signup Form -------------------- */
+/* Step 1: fill name, email, password, confirm password.
+   When signup is submitted: if ok, backend should send verification code to email and response indicates success.
+   goToVerify(email) will be called to move to verification screen.
+*/
+function SignupForm({ switchToLogin, goToVerify, onAlert }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [localError, setLocalError] = useState(""); // quick client-side messages
+
+  useEffect(() => {
+    // clear local error if user fixes mismatch
+    if (localError && password === confirmPassword) setLocalError("");
+  }, [password, confirmPassword, localError]);
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+
+    // client side checks
+    if (password !== confirmPassword) {
+      setLocalError("Passwords do not match");
+      onAlert("Passwords do not match", "error");
+      return;
+    }
+
+    if (!name.trim() || !email.trim()) {
+      onAlert("Please complete all fields", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        onAlert("Signup successful — check your email for a code", "success");
+        goToVerify(email);
+      } else {
+        onAlert(data.message || "Signup failed", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      onAlert("Server error during signup", "error");
+    }
+  };
+
+  return (
+    <div className="auth-page d-flex justify-content-center align-items-center vh-100">
+      <div className="card shadow p-4" style={{ width: 420 }}>
+        <h3 className="text-center mb-3 fw-bold">Create Account</h3>
+
+        <form onSubmit={handleSignup}>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Full Name</label>
+            <input
+              className="form-control"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Email</label>
+            <input
+              type="email"
+              className="form-control"
+              placeholder="example@gmail.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="mb-3 position-relative">
+            <label className="form-label fw-semibold">Password</label>
+            <input
+              type={showPassword ? "text" : "password"}
+              className="form-control"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="btn btn-sm position-absolute"
+              style={{ right: 10, top: "38px", background: "transparent", border: "none" }}
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              <i className={showPassword ? "fa-solid fa-eye" : "fa-solid fa-eye-slash"}></i>
+            </button>
+          </div>
+
+          <div className="mb-3 position-relative">
+            <label className="form-label fw-semibold">Confirm Password</label>
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              className="form-control"
+              placeholder="Re-enter password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="btn btn-sm position-absolute"
+              style={{ right: 10, top: "38px", background: "transparent", border: "none" }}
+              onClick={() => setShowConfirmPassword((s) => !s)}
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              <i className={showConfirmPassword ? "fa-solid fa-eye" : "fa-solid fa-eye-slash"}></i>
+            </button>
+          </div>
+
+          {localError && <div className="text-danger mb-2">{localError}</div>}
+
+          <button className="btn btn-success w-100">Sign Up</button>
+        </form>
+
+        <p className="text-center mt-3">
+          Already registered?{" "}
+          <button className="btn btn-link p-0" onClick={switchToLogin}>
+            Login
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Verification Code Form -------------------- */
+function VerifyCodeForm({ email, switchToLogin, onAlert }) {
+  const [code, setCode] = useState("");
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    if (!code.trim()) {
+      onAlert("Enter verification code", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        onAlert("Account verified — now log in", "success");
+        switchToLogin();
+      } else {
+        onAlert(data.message || "Verification failed", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      onAlert("Server error during verification", "error");
+    }
+  };
+
+  return (
+    <div className="auth-page d-flex justify-content-center align-items-center vh-100" style={{ background: "linear-gradient(135deg,#667eea,#764ba2)" }}>
+      <div className="card shadow p-4" style={{ width: 420 }}>
+        <h3 className="text-center mb-2 fw-bold">Email Verification</h3>
+        <p className="text-muted text-center">A verification code was sent to <b>{email}</b></p>
+
+        <form onSubmit={handleVerify}>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Verification Code</label>
+            <input
+              className="form-control"
+              placeholder="Enter code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+            />
+          </div>
+
+          <button className="btn btn-primary w-100">Verify</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- MAIN APP -------------------- */
 function App() {
-  // Main tasks state (array of task objects)
+  // tasks stored locally for now (your backend fetch integration already exists in TaskForm and TaskList)
   const [tasks, setTasks] = useState(() => {
     try {
       const saved = localStorage.getItem("tasks");
       return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error('Failed to load tasks from localStorage:', error);
+    } catch {
       return [];
     }
   });
 
-  // Filter and search state (kept here so FilterBar + TaskList can share)
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
-  const [dueBefore, setDueBefore] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [authPage, setAuthPage] = useState("login"); // login | signup | verify
+  const [verifyEmail, setVerifyEmail] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("token"));
 
-  // Alert state for error/success messages
-  const [alert, setAlert] = useState({ message: '', type: 'error' });
+  // alert state used by Alert component
+  const [alert, setAlert] = useState({ message: "", type: "error" });
 
-  // Save tasks to localStorage whenever tasks change
   useEffect(() => {
     try {
       localStorage.setItem("tasks", JSON.stringify(tasks));
-    } catch (error) {
-      console.error('Failed to save tasks to localStorage:', error);
-      setAlert({
-        message: 'Warning: Failed to save tasks locally. Your changes may not persist.',
-        type: 'warning',
-      });
+    } catch (err) {
+      console.error("Failed to save tasks locally", err);
+      setAlert({ message: "Failed to save tasks locally", type: "warning" });
     }
   }, [tasks]);
 
-  // Helper: map priority to number for sorting (High first)
-  const priorityValue = (p) => {
-    if (p === "High") return 3;
-    if (p === "Medium") return 2;
-    return 1; // Low or unknown
+  const goToVerify = (email) => {
+    setVerifyEmail(email);
+    setAuthPage("verify");
   };
 
-  // Computing the displayed tasks after filtering, searching, and sorting
-  const displayedTasks = tasks
-    .filter((t) => {
-      // filter by status
-      if (statusFilter === "Completed" && !t.completed) return false;
-      if (statusFilter === "Incomplete" && t.completed) return false;
-      // filter by priority
-      if (priorityFilter !== "All" && t.priority !== priorityFilter) return false;
-      // filter by due date (if set, show tasks due on or before that date)
-      if (dueBefore) {
-        if (!t.dueDate) return false; // if task has no due date, exclude when dueBefore is set
-        const taskDate = new Date(t.dueDate);
-        const limit = new Date(dueBefore);
-        // normalize to midnight to avoid timezone issues
-        taskDate.setHours(0,0,0,0);
-        limit.setHours(0,0,0,0);
-        if (taskDate > limit) return false;
-      }
-      // search filter (title or description)
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const inTitle = t.title.toLowerCase().includes(q);
-        const inDesc = (t.description || "").toLowerCase().includes(q);
-        if (!inTitle && !inDesc) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      // Primary sort: priority (High -> Low)
-      const pDiff = priorityValue(b.priority) - priorityValue(a.priority);
-      if (pDiff !== 0) return pDiff;
-      // Secondary sort: due date ascending (earliest first), empty dueDate go to bottom
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      const ad = new Date(a.dueDate);
-      const bd = new Date(b.dueDate);
-      return ad - bd;
-    });
-
-  const handleAlert = (message, type = 'error') => {
-    setAlert({ message, type });
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
+    setAuthPage("login");
   };
 
-  const handleDismissAlert = () => {
-    setAlert({ message: '', type: 'error' });
-  };
+  // helper to show alert
+  const onAlert = (message, type = "error") => setAlert({ message, type });
+  const clearAlert = () => setAlert({ message: "", type: "error" });
 
+  // AUTH SCREENS
+  if (!isAuthenticated) {
+    if (authPage === "login") {
+      return (
+        <>
+          <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
+          <LoginForm onLogin={() => setIsAuthenticated(true)} switchToSignup={() => setAuthPage("signup")} onAlert={onAlert} />
+        </>
+      );
+    }
+    if (authPage === "signup") {
+      return (
+        <>
+          <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
+          <SignupForm switchToLogin={() => setAuthPage("login")} goToVerify={goToVerify} onAlert={onAlert} />
+        </>
+      );
+    }
+    if (authPage === "verify") {
+      return (
+        <>
+          <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
+          <VerifyCodeForm email={verifyEmail} switchToLogin={() => setAuthPage("login")} onAlert={onAlert} />
+        </>
+      );
+    }
+  }
+
+  // MAIN TODO APP (after login)
   return (
     <div className="app-container">
-      <Alert
-        message={alert.message}
-        type={alert.type}
-        onDismiss={handleDismissAlert}
-      />
-      <Header />
-      <TaskForm setTasks={setTasks} onAlert={handleAlert} />
-      <FilterBar
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        priorityFilter={priorityFilter}
-        setPriorityFilter={setPriorityFilter}
-        dueBefore={dueBefore}
-        setDueBefore={setDueBefore}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-      />
-      <TaskList
-        tasks={displayedTasks}
-        setTasks={setTasks}
-        allTasks={tasks}
-        onAlert={handleAlert}
-      />
+      <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
+      <Header onLogout={handleLogout} />
+
+      <TaskForm setTasks={setTasks} onAlert={onAlert} />
+      <FilterBar />
+      <TaskList tasks={tasks} setTasks={setTasks} />
     </div>
   );
 }
