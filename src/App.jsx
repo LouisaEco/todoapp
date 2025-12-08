@@ -96,11 +96,7 @@ function LoginForm({ onLogin, switchToSignup, onAlert }) {
 }
 
 /* -------------------- Signup Form -------------------- */
-/* Step 1: fill name, email, password, confirm password.
-   When signup is submitted: if ok, backend should send verification code to email and response indicates success.
-   goToVerify(email) will be called to move to verification screen.
-*/
-function SignupForm({ switchToLogin, goToVerify, onAlert }) {
+function SignupForm({ switchToLogin, onAlert }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -109,17 +105,15 @@ function SignupForm({ switchToLogin, goToVerify, onAlert }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [localError, setLocalError] = useState(""); // quick client-side messages
+  const [localError, setLocalError] = useState("");
 
   useEffect(() => {
-    // clear local error if user fixes mismatch
     if (localError && password === confirmPassword) setLocalError("");
   }, [password, confirmPassword, localError]);
 
   const handleSignup = async (e) => {
     e.preventDefault();
 
-    // client side checks
     if (password !== confirmPassword) {
       setLocalError("Passwords do not match");
       onAlert("Passwords do not match", "error");
@@ -141,8 +135,8 @@ function SignupForm({ switchToLogin, goToVerify, onAlert }) {
       const data = await res.json();
 
       if (res.ok) {
-        onAlert("Signup successful — check your email for a code", "success");
-        goToVerify(email);
+        onAlert("Signup successful — you can now login", "success");
+        switchToLogin();
       } else {
         onAlert(data.message || "Signup failed", "error");
       }
@@ -239,63 +233,6 @@ function SignupForm({ switchToLogin, goToVerify, onAlert }) {
   );
 }
 
-/* -------------------- Verification Code Form -------------------- */
-function VerifyCodeForm({ email, switchToLogin, onAlert }) {
-  const [code, setCode] = useState("");
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!code.trim()) {
-      onAlert("Enter verification code", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch("http://localhost:5000/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        onAlert("Account verified — now log in", "success");
-        switchToLogin();
-      } else {
-        onAlert(data.message || "Verification failed", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      onAlert("Server error during verification", "error");
-    }
-  };
-
-  return (
-    <div className="auth-page d-flex justify-content-center align-items-center vh-100" style={{ background: "linear-gradient(135deg,#667eea,#764ba2)" }}>
-      <div className="card shadow p-4" style={{ width: 420 }}>
-        <h3 className="text-center mb-2 fw-bold">Email Verification</h3>
-        <p className="text-muted text-center">A verification code was sent to <b>{email}</b></p>
-
-        <form onSubmit={handleVerify}>
-          <div className="mb-3">
-            <label className="form-label fw-semibold">Verification Code</label>
-            <input
-              className="form-control"
-              placeholder="Enter code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-            />
-          </div>
-
-          <button className="btn btn-primary w-100">Verify</button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 /* -------------------- MAIN APP -------------------- */
 function App() {
   // tasks stored locally for now (your backend fetch integration already exists in TaskForm and TaskList)
@@ -308,11 +245,8 @@ function App() {
     }
   });
 
-  const [authPage, setAuthPage] = useState("login"); // login | signup | verify
-  const [verifyEmail, setVerifyEmail] = useState(null);
+  const [authPage, setAuthPage] = useState("login");
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("token"));
-
-  // alert state used by Alert component
   const [alert, setAlert] = useState({ message: "", type: "error" });
 
   useEffect(() => {
@@ -324,22 +258,15 @@ function App() {
     }
   }, [tasks]);
 
-  const goToVerify = (email) => {
-    setVerifyEmail(email);
-    setAuthPage("verify");
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsAuthenticated(false);
     setAuthPage("login");
   };
 
-  // helper to show alert
   const onAlert = (message, type = "error") => setAlert({ message, type });
   const clearAlert = () => setAlert({ message: "", type: "error" });
 
-  // AUTH SCREENS
   if (!isAuthenticated) {
     if (authPage === "login") {
       return (
@@ -353,15 +280,7 @@ function App() {
       return (
         <>
           <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
-          <SignupForm switchToLogin={() => setAuthPage("login")} goToVerify={goToVerify} onAlert={onAlert} />
-        </>
-      );
-    }
-    if (authPage === "verify") {
-      return (
-        <>
-          <Alert message={alert.message} type={alert.type} onDismiss={clearAlert} />
-          <VerifyCodeForm email={verifyEmail} switchToLogin={() => setAuthPage("login")} onAlert={onAlert} />
+          <SignupForm switchToLogin={() => setAuthPage("login")} onAlert={onAlert} />
         </>
       );
     }

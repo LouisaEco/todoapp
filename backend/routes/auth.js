@@ -37,60 +37,21 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const code = generateCode();
 
     await prisma.user.create({
       data: {
         name,
         email,
         password: hashed,
-        verificationCode: code,
-        isVerified: false,
+        isVerified: true,
       },
     });
 
-    // SEND EMAIL
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Your Verification Code",
-      text: `Your verification code is: ${code}`,
-    });
-
     res.json({
-      message: "Signup successful. Check your email for the verification code.",
+      message: "Signup successful. You can now login.",
     });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// =========================
-//      VERIFY ACCOUNT
-// =========================
-router.post("/verify", async (req, res) => {
-  const { email, code } = req.body;
-
-  try {
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    if (user.verificationCode !== code) {
-      return res.status(400).json({ message: "Invalid verification code" });
-    }
-
-    await prisma.user.update({
-      where: { email },
-      data: { isVerified: true, verificationCode: null },
-    });
-
-    res.json({ message: "Account verified successfully" });
-  } catch (err) {
-    console.error("Verify error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
