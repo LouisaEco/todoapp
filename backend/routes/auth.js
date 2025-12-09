@@ -2,23 +2,8 @@ import express from "express";
 import prisma from "../prismaClient.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 
 const router = express.Router();
-
-// EMAIL SENDER
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// Generate 6-digit verification code
-function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 // =========================
 //        SIGNUP
